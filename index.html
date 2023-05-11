@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title><h1 style ="font-size:24px;"><b>Drive Sync</b></h1></title>
+    <meta charset="utf-8" />
+    <style>
+      .center {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 20vh;
+      }
+      table {
+			border-collapse: collapse;
+			width: 100%;
+		}
+
+		th, td {
+			text-align: left;
+			padding: 8px;
+			font-size: 16px;
+		}
+
+		th {
+			background-color: #ddd;
+		}
+
+		tr:nth-child(even) {
+			background-color: #f2f2f2;
+		}
+    </style>
+  </head>
+  <body bgcolor = "teal">
+    
+    <div class="center">
+    <p style = "color:rgba(3, 9, 9, 0.934);font-size:35px;"><b>Welcome to Drive Sync</b></p>
+    </div>
+    <div class="center">
+    <!--Add buttons to initiate auth sequence and sign out-->
+    <button id="authorize_button" onclick="handleAuthClick()">Authorize</button>
+    <button id="signout_button" onclick="handleSignoutClick()">Sign Out</button>
+    <button id="view_list" onclick="listFiles()">View List</button>
+    <button id="bach_to_home" onclick="handlebackClick()">Back to Home</button>
+  </div>
+    <pre id="content" style="white-space: pre-wrap;"></pre>
+
+    <table style="display:none;">
+      <thead>
+        <tr>
+          <th>File Name</th>
+          <th>File ID</th>
+          <th>Download</th>
+        </tr>
+      </thead>
+      <tbody id="content">
+        <!-- The table rows will be added dynamically here -->
+      </tbody>
+    </table>
+  
+    
+    <script type="text/javascript">
+      /* exported gapiLoaded */
+      /* exported gisLoaded */
+      /* exported handleAuthClick */
+      /* exported handleSignoutClick */
+
+      // TODO(developer): Set to client ID and API key from the Developer Console
+      const CLIENT_ID = '426733652250-0ds9se7t9gmf2fs8d7rlcgfiu7kaagge.apps.googleusercontent.com';
+      const API_KEY = 'AIzaSyAXruEQ84lsK_1acGgCfcWPPCkcTbtcUyA';
+
+      // Discovery doc URL for APIs used by the quickstart
+      const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest';
+
+      // Authorization scopes required by the API; multiple scopes can be
+      // included, separated by spaces.
+      const SCOPES = 'https://www.googleapis.com/auth/drive.metadata.readonly';
+
+      let tokenClient;
+      let gapiInited = false;
+      let gisInited = false;
+
+      document.getElementById('authorize_button').style.visibility = 'hidden';
+      document.getElementById('signout_button').style.visibility = 'hidden';
+      document.getElementById('view_list').style.visibility = 'hidden';
+      document.getElementById('upload_button').style.visibility = 'hidden';
+      document.getElementById('bach_to_home').style.visibility = 'hidden';
+      
+      const fileInput = document.getElementById('file_input');
+      const uploadButton = document.getElementById('upload_button');
+
+      /* // Add an event listener to the upload button
+      uploadButton.addEventListener('click', (event) => {
+       event.preventDefault();
+      const file = fileInput.files[0];
+      if (file) {
+         // Call the uploadBasic function with the selected file
+           uploadBasic(file);
+       }
+      }); */
+      /**
+       * Callback after api.js is loaded.
+       */
+      function gapiLoaded() {
+        gapi.load('client', initializeGapiClient);
+      }
+
+      /**
+       * Callback after the API client is loaded. Loads the
+       * discovery doc to initialize the API.
+       */
+      async function initializeGapiClient() {
+        await gapi.client.init({
+          apiKey: API_KEY,
+          discoveryDocs: [DISCOVERY_DOC],
+        });
+        gapiInited = true;
+        maybeEnableButtons();
+      }
+
+      /**
+       * Callback after Google Identity Services are loaded.
+       */
+      function gisLoaded() {
+        tokenClient = google.accounts.oauth2.initTokenClient({
+          client_id: CLIENT_ID,
+          scope: SCOPES,
+          callback: '', // defined later
+        });
+        gisInited = true;
+        maybeEnableButtons();
+      }
+
+      /**
+       * Enables user interaction after all libraries are loaded.
+       */
+      function maybeEnableButtons() {
+        if (gapiInited && gisInited) {
+          document.getElementById('authorize_button').style.visibility = 'visible';
+          document.getElementById('bach_to_home').style.visibility = 'hidden';
+        }
+      }
+
+      /**
+       *  Sign in the user upon button click.
+       */
+      function handleAuthClick() {
+        document.getElementById('content').innerText = '';
+        tokenClient.callback = async (resp) => {
+          if (resp.error !== undefined) {
+            throw (resp);
+          }
+          
+          const popupWidth = 300;
+          const popupHeight = 150;
+          const left = (screen.width - popupWidth) / 2;
+          const popup = window.open('', 'popup', `width=${popupWidth},height=${popupHeight},left=${left}`);
+          popup.document.write('<p>Successfully logged in.</p><button onclick="window.close()">Close</button>');
+
+
+          document.getElementById('signout_button').style.visibility = 'visible';
+          document.getElementById('authorize_button').innerText = 'refresh';
+          document.getElementById('view_list').style.visibility = 'visible';
+          document.getElementById('bach_to_home').style.visibility = 'hidden';
+          
+         // await listFiles();
+        };
+
+       
+
+        if (gapi.client.getToken() === null) {
+          // Prompt the user to select a Google Account and ask for consent to share their data
+          // when establishing a new session.
+          tokenClient.requestAccessToken({prompt: 'consent'});
+        } else {
+          // Skip display of account chooser and consent dialog for an existing session.
+          tokenClient.requestAccessToken({prompt: ''});
+        }
+      }
+
+      function handlebackClick() {
+        document.getElementById('content').innerText = '';
+        tokenClient.callback = async (resp) => {
+          if (resp.error !== undefined) {
+            throw (resp);
+          }
+          document.getElementById('signout_button').style.visibility = 'visible';
+          document.getElementById('authorize_button').style.visibility = 'visible';
+          document.getElementById('authorize_button').innerText = 'refresh';
+          document.getElementById('view_list').style.visibility = 'visible';
+          document.getElementById('bach_to_home').style.visibility = 'hidden';
+          
+          
+         // await listFiles();
+        };
+        if (gapi.client.getToken() === null) {
+          // Prompt the user to select a Google Account and ask for consent to share their data
+          // when establishing a new session.
+          tokenClient.requestAccessToken({prompt: 'consent'});
+        } else {
+          // Skip display of account chooser and consent dialog for an existing session.
+          tokenClient.requestAccessToken({prompt: ''});
+        }
+      }
+      /**
+       *  Sign out the user upon button click.
+       */
+      function handleSignoutClick() {
+        const token = gapi.client.getToken();
+        if (token !== null) {
+          google.accounts.oauth2.revoke(token.access_token);
+          gapi.client.setToken('');
+          document.getElementById('content').innerText = '';
+          document.getElementById('authorize_button').innerText = 'Authorize';
+          document.getElementById('signout_button').style.visibility = 'hidden';
+          document.getElementById('view_list').style.visibility = 'hidden';
+          document.getElementById('bach_to_home').style.visibility = 'hidden';
+        }
+      }
+
+      /**
+       * Print metadata for first 10 files.
+       */
+      async function listFiles() {
+        
+        document.getElementById('signout_button').style.visibility = 'hidden';
+          document.getElementById('authorize_button').style.visibility = 'hidden';
+          document.getElementById('view_list').style.visibility = 'hidden';
+          document.getElementById('bach_to_home').style.visibility = 'visible';
+        let response;
+        try {
+          response = await gapi.client.drive.files.list({
+            'pageSize': 10,
+            'fields': 'files(id, name)',
+          });
+        } catch (err) {
+          document.getElementById('content').innerText = err.message;
+          return;
+        }
+        const files = response.result.files;
+        if (!files || files.length == 0) {
+          document.getElementById('content').innerText = 'No files found.';
+          return;
+        }
+        // Flatten to string to display
+         let output = 'Files:\n';
+        files.forEach(file => {
+          
+          output += `
+					<tr>
+						<td>${file.name}</td>  <td>${file.id}</td>   <td><button id="down" onclick="DownloadFile(${file.id})">Download</button>
+						 </td>
+					</tr>
+				`;
+       });
+     document.getElementById('content').innerHTML = output; 
+     
+}
+
+  async function DownloadFile(Id) {
+  /*    // only file can be download able not folder or zip
+      gapi.client.drive.files.get({
+          // give id of file to download
+          fileId: Id,
+          alt: 'media'
+      }).then(function (res) {
+          // set the different type if file is not text file
+          var blob = new Blob([res.body], { type: 'plain/text' });
+          var a = document.createElement('a');
+          a.href = window.URL.createObjectURL(blob);
+          // give file name
+          a.download = name;
+          a.click();
+      })
+  } */
+  try {
+  await gapi.client.load('drive','v3');
+  const request = gapi.client.drive.files.get ({
+  fileId: 'Id', 
+  fields: 'webContentLink, id, name'
+  });
+  request.execute(function (resp) 
+  {
+  if (resp.webContentLink){
+  window.location. assign(resp.webContentLink);
+  } 
+  else{
+
+  var formattedJon =JSON.stringify(resp.result, null, 2); 
+  document. getElementById('query-output').value-formattedJson;
+  }
+  });
+  const popupWidth = 300;
+          const popupHeight = 150;
+          const left = (screen.width - popupWidth) / 2;
+          const popup = window.open('', 'popup', `width=${popupWidth},height=${popupHeight},left=${left}`);
+          popup.document.write('<p>Successfully downloaded.</p><button onclick="window.close()">Close</button>');
+  }catch (e) {
+  console. error ('Error getting files',e)
+  }
+  }
+
+  </script>
+    <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
+    <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
+  
+  </body>
+</html>
